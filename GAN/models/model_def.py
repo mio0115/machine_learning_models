@@ -1,15 +1,16 @@
 import tensorflow as tf
 import numpy as np
 
+
 input_shape = (256, 256, 3)
 
 class Generator(tf.keras.models.Model):
     def __init__(self, **kwargs):
         super(Generator, self).__init__()
 
-        self.get_model(**kwargs)
+        self._set_up_layers(**kwargs)
     
-    def get_model(self, **kwargs):
+    def _set_up_layers(self, **kwargs):
         self.input_dense = tf.keras.layers.Dense(
             units=np.prod(kwargs["origin_output_shape"])
         )
@@ -22,30 +23,40 @@ class Generator(tf.keras.models.Model):
                 name=f"generator_conv_{i}"
             ) for i in range(kwargs["num_of_conv"])
         ]
+        self.batch_norm = [
+            tf.keras.layers.BatchNormalization()
+            for _ in range(kwargs["num_of_conv"])
+        ]
         
         self.reshape = tf.keras.layers.Reshape(kwargs["origin_output_shape"])
 
     def call(self, input):
+        # We now use images as input then output images
+        # therefore, we do not need dense layers and the reshape layer
         x = input
-        x = self.input_dense(x)
-        x = tf.keras.activations.relu(x)
+        #x = self.input_dense(x)
+        #x = tf.keras.activations.relu(x)
 
-        x = self.reshape(x)
-        for i in range(len(self.conv_layers)):
-            x = tf.keras.layers.UpSampling2D()(x)
+        #x = self.reshape(x)
+        for i in range(len(self.conv_layers)-1):
+            #x = tf.keras.layers.UpSampling2D()(x)
             x = self.conv_layers[i](x)
             x = tf.keras.activations.relu(x)
+            x = self.batch_norm[i](x)
         
-        return x
+        x = self.conv_layers[-1](x)
+        x = tf.keras.activations.sigmoid(x)
+
+        return x * 255
 
 
 class Discriminator(tf.keras.models.Model):
     def __init__(self, **kwargs):
         super(Discriminator, self).__init__()
 
-        self.get_model(**kwargs)
+        self._set_up_layers(**kwargs)
     
-    def get_model(self, **kwargs):
+    def _set_up_layers(self, **kwargs):
         self.conv_layers = [
             tf.keras.layers.Conv2D(
                 filters=kwargs["filters"][i],
@@ -62,10 +73,10 @@ class Discriminator(tf.keras.models.Model):
                 name=f"discriminator_{i}"
             ) for i in range(kwargs["num_of_dense"])
         ]
-        self.output_layer = tf.keras.layers.Dense(units=2, activation="softmax")
+        self.output_layer = tf.keras.layers.Dense(units=1, activation="sigmoid")
         
     def call(self, input):
-        x = input
+        x = input / 255
         for i in range(len(self.conv_layers)):
             x = self.conv_layers[i](x)
             x = tf.keras.activations.relu(x)
