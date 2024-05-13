@@ -34,10 +34,6 @@ class Generator(tf.keras.models.Model):
         # We now use images as input then output images
         # therefore, we do not need dense layers and the reshape layer
         x = input
-        #x = self.input_dense(x)
-        #x = tf.keras.activations.relu(x)
-
-        #x = self.reshape(x)
         for i in range(len(self.conv_layers)-1):
             #x = tf.keras.layers.UpSampling2D()(x)
             x = self.conv_layers[i](x)
